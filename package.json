@@ -1,0 +1,12 @@
+{
+    "name": "com.sayken.uuiiframework",
+    "displayName": "UuIiFrameWork",
+    "version": "0.1.0",
+    "unity": "2021.3",
+    "description": "UuIiViewを使ったFramework",
+    "author": {
+        "name": "sayken",
+        "email": "sayken2000@gmail.com",
+        "url": ""
+    }
+}
