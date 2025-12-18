@@ -148,8 +148,8 @@ namespace UuIiView
             {UIType.Button,"bool"},
             {UIType.Toggle,"bool"},
             {UIType.Slider,"float : (0f〜1f)"},
-            {UIType.List,"[]"}
-
+            {UIType.TMP_InputField,"\"string\""},
+            {UIType.CustomToggleGroup,"int : (index)"}
         };
 
         string indent = "";
