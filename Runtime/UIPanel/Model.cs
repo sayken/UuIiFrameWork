@@ -1,30 +1,40 @@
+using System;
 using System.Collections.Generic;
-using System.Linq;
+using UnityEngine;
 
 namespace UuIiView
 {
     public class Model
     {
-        List<IModel> models = new ();
+        private readonly List<IModel> _models = new();
+        private readonly Dictionary<Type, IModel> _modelCache = new();
 
         public void Add(IModel model)
         {
-            var type = model.GetType();
-            if ( models.Any(_=>_.GetType()==type) == false )
+            if (model == null)
             {
-                models.Add(model);
+                Debug.LogError("[Model] Cannot add null model");
+                return;
+            }
+
+            var type = model.GetType();
+            if (!_modelCache.ContainsKey(type))
+            {
+                _modelCache[type] = model;
+                _models.Add(model);
             }
         }
 
         public T Get<T>() where T : IModel
         {
             var type = typeof(T);
-            var ret = models.FirstOrDefault(_=>_.GetType()==type);
-            if ( ret != null )
+            if (_modelCache.TryGetValue(type, out var model))
             {
-                return (T)ret;
+                return (T)model;
             }
-            return default(T);
+            return default;
         }
+
+        public IReadOnlyList<IModel> GetAll() => _models.AsReadOnly();
     }
 }

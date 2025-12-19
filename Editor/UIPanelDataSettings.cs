@@ -376,15 +376,24 @@ namespace UuIiView
 
             if (!string.IsNullOrEmpty(path))
             {
-                string enumCs = sb.ToString();
-                StreamWriter sw = new StreamWriter(path, false);
-                sw.WriteLine(enumCs);
-                sw.Flush();
-                sw.Close();
+                try
+                {
+                    string enumCs = sb.ToString();
+                    using (var sw = new StreamWriter(path, false))
+                    {
+                        sw.WriteLine(enumCs);
+                    }
 
-                // 次回同じパスに保存できるように、セーブしたパスを保存
-                savePath = Path.GetDirectoryName(path);
-                EditorPrefs.SetString(saveKey, savePath);
+                    // 次回同じパスに保存できるように、セーブしたパスを保存
+                    savePath = Path.GetDirectoryName(path);
+                    EditorPrefs.SetString(saveKey, savePath);
+
+                    AssetDatabase.Refresh();
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogError($"[UIPanelDataSettings] Failed to write enum file: {ex.Message}");
+                }
             }
 
         }

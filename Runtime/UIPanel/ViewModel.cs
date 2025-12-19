@@ -93,30 +93,35 @@ namespace UuIiView
         /// <returns>成功 = true, 失敗 = false</returns>
         public bool SyncListItem(string rootKey, string id, string key, object value)
         {
-            // Debug.Log($"SyncListItemです : {rootKey}, {Id}, {key}, {value}");
-            if ( !data.ContainsKey(rootKey) )
+            if (data == null)
             {
-                Debug.LogError("rootKeyがない : "+ rootKey);
-                return false;
-            }
-            if ( data[rootKey].GetType() != typeof(List<IDictionary<string,object>>) )
-            {
-                Debug.LogError($"data[{rootKey}] がListじゃない : "+ data[rootKey].GetType());
+                Debug.LogError("[ViewModel] data is null. Call Init first.");
                 return false;
             }
 
-            List<IDictionary<string,object>> arr = (List<IDictionary<string,object>>)data[rootKey];
-
-            for ( int i=0 ; i<arr.Count ; i++ )
+            if (!data.TryGetValue(rootKey, out var rootValue))
             {
-                if ( arr[i].GetType() != typeof(Dictionary<string,object>) )
+                Debug.LogError($"[ViewModel] rootKey not found: {rootKey}");
+                return false;
+            }
+
+            if (rootValue is not List<IDictionary<string, object>> arr)
+            {
+                Debug.LogError($"[ViewModel] data[{rootKey}] is not List<IDictionary<string,object>>: {rootValue?.GetType()}");
+                return false;
+            }
+
+            foreach (var item in arr)
+            {
+                if (item is not Dictionary<string, object> dic)
                 {
-                    Debug.LogError("型が違う "+ arr[i].GetType());
                     continue;
                 }
-                var dic = arr[i];
 
-                if ( dic.ContainsKey("Id") && (string)dic["Id"] == id && dic.ContainsKey(key) )
+                // 安全な型チェックとキャスト
+                if (dic.TryGetValue("Id", out var idValue) &&
+                    idValue?.ToString() == id &&
+                    dic.ContainsKey(key))
                 {
                     dic[key] = value;
                     return true;

@@ -26,20 +26,45 @@ namespace UuIiView
         /// <param name="commandLink"></param>
         public CommandLink(string commandLink)
         {
-            source = commandLink;
+            if (string.IsNullOrEmpty(commandLink))
+            {
+                throw new ArgumentException("commandLink cannot be null or empty");
+            }
 
+            source = commandLink;
             var arr = commandLink.Split("/");
+
+            if (arr.Length < 6)
+            {
+                throw new ArgumentException($"Invalid command format. Expected at least 6 segments, got {arr.Length}: {commandLink}");
+            }
+
             PanelName = arr[0];
-            EventType = (UuIiView.EventType)Enum.Parse(typeof(UuIiView.EventType), arr[1]);
-            ActionType = (UuIiView.ActionType)Enum.Parse(typeof(UuIiView.ActionType), arr[2]);
+
+            if (!Enum.TryParse<UuIiView.EventType>(arr[1], out var eventType))
+            {
+                throw new ArgumentException($"Invalid EventType: {arr[1]}");
+            }
+            EventType = eventType;
+
+            if (!Enum.TryParse<UuIiView.ActionType>(arr[2], out var actionType))
+            {
+                throw new ArgumentException($"Invalid ActionType: {arr[2]}");
+            }
+            ActionType = actionType;
+
             EventName = arr[3];
             ParentName = arr[4];
             Id = arr[5];
+
             param = new Dictionary<string, string>();
             for (int i = 6; i < arr.Length; i++)
             {
                 var sep = arr[i].Split("=");
-                param[sep[0]] = sep[1];
+                if (sep.Length == 2)
+                {
+                    param[sep[0]] = sep[1];
+                }
             }
         }
 

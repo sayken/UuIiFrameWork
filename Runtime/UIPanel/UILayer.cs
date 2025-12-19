@@ -51,17 +51,26 @@ namespace UuIiView
                 layerType.Add(ts.name);
             }
 
-            tapLock = canvasRoot.GetComponentsInChildren<Transform>(true).FirstOrDefault(_ => _.gameObject.name == "TapLock").gameObject;
-            blind = canvasRoot.GetComponentsInChildren<Transform>(true).FirstOrDefault(_ => _.gameObject.name == "Blind").gameObject;
-            if (blind == null)
+            var tapLockTransform = canvasRoot.GetComponentsInChildren<Transform>(true)
+                .FirstOrDefault(_ => _.gameObject.name == "TapLock");
+            var blindTransform = canvasRoot.GetComponentsInChildren<Transform>(true)
+                .FirstOrDefault(_ => _.gameObject.name == "Blind");
+
+            if (blindTransform == null)
             {
                 Debug.LogError("CanvasRoot has no Blind gameobject");
             }
-            if (tapLock == null)
+            else
+            {
+                blind = blindTransform.gameObject;
+            }
+
+            if (tapLockTransform == null)
             {
                 Debug.LogError("CanvasRoot has no TapLock gameobject");
                 return;
             }
+            tapLock = tapLockTransform.gameObject;
 
             TapLock(false);
 
@@ -124,15 +133,26 @@ namespace UuIiView
 
             blind?.SetActive(false);
 
-            for ( int i=0 ; i<layerType.Count ; i++ )
+            // パネル情報を辞書化してO(1)アクセスに改善
+            var panelInfoDict = uiPanelData.panels.ToDictionary(p => p.name);
+
+            for (int i = 0; i < layerType.Count; i++)
             {
                 int idx = 0;
-                var panels = layerContent[layerType[i]].GetComponentsInChildren<UIPanel>().OrderBy(_ => _.transform.GetSiblingIndex());
-                layerCount[layerType[i]] = panels.Count();
-                foreach ( var panel in  panels)
+                var panels = layerContent[layerType[i]]
+                    .GetComponentsInChildren<UIPanel>()
+                    .OrderBy(_ => _.transform.GetSiblingIndex())
+                    .ToList();
+                layerCount[layerType[i]] = panels.Count;
+
+                foreach (var panel in panels)
                 {
-                    var info = uiPanelData.panels.FirstOrDefault(_ => _.name == panel.name);
-                    if ( info.blindType != BlindType.None )
+                    if (!panelInfoDict.TryGetValue(panel.name, out var info))
+                    {
+                        continue;
+                    }
+
+                    if (info.blindType != BlindType.None)
                     {
                         blind.transform.SetParent(panel.transform.parent);
                         var btn = blind.GetComponent<Button>();
@@ -140,9 +160,9 @@ namespace UuIiView
                         btn.onClick.RemoveAllListeners();
                         if (info.blindType == BlindType.Close)
                         {
-                            btn.onClick.AddListener(()=>panel.Close());
+                            btn.onClick.AddListener(() => panel.Close());
                         }
-                        else if ( info.blindType == BlindType.Custom )
+                        else if (info.blindType == BlindType.Custom)
                         {
                             btn.onClick.AddListener(panel.OnTapBlind);
                         }
@@ -158,7 +178,7 @@ namespace UuIiView
 
             reservedSort = false;
 
-            if ( !string.IsNullOrEmpty(panelName) )
+            if (!string.IsNullOrEmpty(panelName))
             {
                 CheckLayer(isOpen, panelName);
             }
@@ -211,14 +231,26 @@ namespace UuIiView
 
             if ( onCompleted != null )
             {
-                yield return new WaitWhile(()=>IsLayerClosedAll(layerNames));
+                yield return new WaitWhile(() => HasOpenPanelInLayers(layerNames));
                 onCompleted.Invoke();
             }
         }
 
+        /// <summary>
+        /// 指定されたレイヤーに開いているパネルが存在するかどうか
+        /// </summary>
+        public bool HasOpenPanelInLayers(params string[] layerNames)
+        {
+            return layerCount.Any(x => layerNames.Contains(x.Key) && x.Value > 0);
+        }
+
+        /// <summary>
+        /// 後方互換性のため残す（非推奨）
+        /// </summary>
+        [System.Obsolete("Use HasOpenPanelInLayers instead. Note: return value logic is inverted from method name.")]
         public bool IsLayerClosedAll(params string[] layerNames)
         {
-            return layerCount.Any(x=>layerNames.Contains(x.Key) && x.Value>0);
+            return HasOpenPanelInLayers(layerNames);
         }
 
         void CheckLayer(bool isOpen, string closedPanel)

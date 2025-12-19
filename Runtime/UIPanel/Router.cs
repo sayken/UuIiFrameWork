@@ -20,8 +20,27 @@ namespace UuIiView
         /// <param name="model"></param>
         public void SetPresenter(string panelName, Type type, Model model)
         {
-            IPresenter obj = (IPresenter)Activator.CreateInstance(type, UILayer.Inst.Router, panelName, model);
-            presenters.Add(panelName, obj);
+            if (string.IsNullOrEmpty(panelName))
+            {
+                Debug.LogError("[Router] panelName cannot be null or empty");
+                return;
+            }
+
+            if (!typeof(IPresenter).IsAssignableFrom(type))
+            {
+                Debug.LogError($"[Router] Type {type.Name} does not implement IPresenter");
+                return;
+            }
+
+            try
+            {
+                IPresenter obj = (IPresenter)Activator.CreateInstance(type, UILayer.Inst.Router, panelName, model);
+                presenters[panelName] = obj;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[Router] Failed to create presenter {type.Name}: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -36,18 +55,36 @@ namespace UuIiView
 
         public void SetGroupPresenter(Type type, UIGroup group, Model model)
         {
-            // Debug.Log("Type = "+ type.ToString());
-            IGroupPresenter groupPresenter = (IGroupPresenter)Activator.CreateInstance(type, UILayer.Inst.Router, group.name, model);
-            foreach ( var panelName in group.panelNames)
+            if (group == null)
             {
-                if ( !presenters.ContainsKey(panelName) )
-                {
-                    Debug.LogError($"[{panelName}Presenter] Not found in prsenters");
-                    return;
-                }
-                groupPresenter.AddPresenter(presenters[panelName]);
+                Debug.LogError("[Router] group cannot be null");
+                return;
             }
-            groupPresenters[group.name] = groupPresenter;
+
+            if (!typeof(IGroupPresenter).IsAssignableFrom(type))
+            {
+                Debug.LogError($"[Router] Type {type.Name} does not implement IGroupPresenter");
+                return;
+            }
+
+            try
+            {
+                IGroupPresenter groupPresenter = (IGroupPresenter)Activator.CreateInstance(type, UILayer.Inst.Router, group.name, model);
+                foreach (var panelName in group.panelNames)
+                {
+                    if (!presenters.TryGetValue(panelName, out var presenter))
+                    {
+                        Debug.LogError($"[Router] [{panelName}Presenter] Not found in presenters");
+                        return;
+                    }
+                    groupPresenter.AddPresenter(presenter);
+                }
+                groupPresenters[group.name] = groupPresenter;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[Router] Failed to create group presenter {type.Name}: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -56,17 +93,27 @@ namespace UuIiView
         /// <param name="cmd"></param>
         public void Routing(CommandLink cmd)
         {
+            if (cmd == null)
+            {
+                Debug.LogError("[Router] CommandLink is null");
+                return;
+            }
+
             Debug.Log(cmd.Log());
 
-            if ( groupPresenters.ContainsKey(cmd.PanelName))
+            if (groupPresenters.TryGetValue(cmd.PanelName, out var groupPresenter))
             {
                 // GroupPresenterに処理を渡す
-                groupPresenters[cmd.PanelName].OnEvent(cmd);
+                groupPresenter.OnEvent(cmd);
+            }
+            else if (presenters.TryGetValue(cmd.PanelName, out var presenter))
+            {
+                // Presenterに処理を渡す
+                presenter.OnEvent(cmd);
             }
             else
             {
-                // Presenterに処理を渡す
-                presenters[cmd.PanelName].OnEvent(cmd);
+                Debug.LogError($"[Router] Presenter not found: {cmd.PanelName}");
             }
         }
 
