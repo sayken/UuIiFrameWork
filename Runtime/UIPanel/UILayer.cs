@@ -8,26 +8,38 @@ using System;
 
 namespace UuIiView
 {
+    /// <summary>
+    /// UI表示階層を管理するシングルトンコンポーネント
+    /// パネルの生成、キャッシュ、レイヤーソートを担当する
+    /// </summary>
     public class UILayer : MonoBehaviour
     {
-        UIPanelData uiPanelData;
+        private UIPanelData uiPanelData;
+
+        /// <summary>レイヤー名のリスト</summary>
         public List<string> layerType = new List<string>();
-        Dictionary<string, RectTransform> layerContent = new Dictionary<string, RectTransform>();
-        Dictionary<string,int> layerCount = new Dictionary<string,int>();
-        GameObject canvasRoot;
 
-        GameObject blind;
-        GameObject tapLock;
-        bool reservedSort = false;
+        private Dictionary<string, RectTransform> layerContent = new Dictionary<string, RectTransform>();
+        private Dictionary<string, int> layerCount = new Dictionary<string, int>();
+        private GameObject canvasRoot;
+        private GameObject blind;
+        private GameObject tapLock;
+        private bool reservedSort = false;
+        private Dictionary<string, UIPanel> panelCaches = new Dictionary<string, UIPanel>();
 
-        Dictionary<string, UIPanel> panelCaches = new Dictionary<string, UIPanel>();
-
+        /// <summary>イベントルーティングを管理するRouterインスタンス</summary>
         public Router Router { get; private set; }
 
-        /// <summary>　Panelを閉じたとき、所属レイヤーが全て閉じられたら呼ばれる </summary>
+        /// <summary>パネルを閉じた時、所属レイヤーが全て閉じられたら呼ばれるコールバック</summary>
         public Action<string> OnAllClosed;
+
+        /// <summary>レイヤーで最初のパネルが開かれた時に呼ばれるコールバック</summary>
         public Action<string> OnFirstOpened;
 
+        /// <summary>
+        /// UILayerを初期化する
+        /// </summary>
+        /// <param name="uiPanelData">パネル設定データ</param>
         public void Initialize(UIPanelData uiPanelData)
         {
             this.uiPanelData = uiPanelData;
@@ -84,11 +96,20 @@ namespace UuIiView
             if ( inputModule == null ) gameObject.AddComponent<StandaloneInputModule>();
         }
 
+        /// <summary>
+        /// 登録されている全パネル名を取得する
+        /// </summary>
+        /// <returns>パネル名のコレクション</returns>
         public IEnumerable<string> GetPanelNames()
         {
             return uiPanelData.panels.Select(panel => panel.name);
         }
 
+        /// <summary>
+        /// パネルを追加する（キャッシュがあればそれを使用）
+        /// </summary>
+        /// <param name="panelName">パネル名</param>
+        /// <returns>追加されたUIPanel</returns>
         public UIPanel AddPanel(string panelName)
         {
             if ( panelCaches.ContainsKey(panelName) )
@@ -118,6 +139,11 @@ namespace UuIiView
             return go;
         }
 
+        /// <summary>
+        /// パネルの表示順をソートする
+        /// </summary>
+        /// <param name="isOpen">パネルが開かれたかどうか</param>
+        /// <param name="panelName">対象パネル名</param>
         public void SortPanel(bool isOpen, string panelName = "")
         {
             if (!reservedSort && gameObject.activeSelf )
@@ -184,6 +210,12 @@ namespace UuIiView
             }
         }
 
+        /// <summary>
+        /// パネルを閉じる
+        /// </summary>
+        /// <param name="panelName">パネル名</param>
+        /// <param name="forceDestroy">強制的に破棄するか</param>
+        /// <returns>破棄が必要な場合はtrue</returns>
         public bool Close(string panelName, bool forceDestroy = false)
         {
             if ( panelCaches.ContainsKey(panelName) )
@@ -203,15 +235,29 @@ namespace UuIiView
             return true;
         }
 
+        /// <summary>
+        /// 指定されたレイヤーの全パネルを閉じる
+        /// </summary>
+        /// <param name="layerNames">閉じるレイヤー名</param>
         public void CloseByLayer(params string[] layerNames)
         {
             StartCoroutine(CloseByLayerInternal(null, layerNames));
         }
+
+        /// <summary>
+        /// 指定されたレイヤーの全パネルを閉じる（完了コールバック付き）
+        /// </summary>
+        /// <param name="onCompleted">完了時のコールバック</param>
+        /// <param name="layerNames">閉じるレイヤー名</param>
         public void CloseByLayer(Action onCompleted, params string[] layerNames)
         {
             StartCoroutine(CloseByLayerInternal(onCompleted, layerNames));
         }
 
+        /// <summary>
+        /// 全レイヤーの全パネルを閉じる
+        /// </summary>
+        /// <param name="onCompleted">完了時のコールバック</param>
         public void CloseAllLayers(Action onCompleted=null)
         {
             StartCoroutine(CloseByLayerInternal(onCompleted, layerType.ToArray()));
@@ -272,13 +318,22 @@ namespace UuIiView
             }
         }
 
+        /// <summary>タップロックが有効かどうか</summary>
         public bool IsTapLock => tapLock.activeSelf;
+
+        /// <summary>
+        /// タップロックの状態を設定する
+        /// </summary>
+        /// <param name="isLock">ロックする場合はtrue</param>
         public void TapLock(bool isLock) => tapLock.SetActive(isLock);
 
 
         // ======== Singleton ===========================================================================================
-        static UILayer _instance;
+        private static UILayer _instance;
 
+        /// <summary>
+        /// UILayerのシングルトンインスタンス
+        /// </summary>
         public static UILayer Inst
         {
             get

@@ -9,18 +9,30 @@ using Newtonsoft.Json.Linq;
 
 namespace UuIiView
 {
+    /// <summary>
+    /// リアクティブなデータバインディングを提供するViewModelクラス
+    /// JSON/Dictionaryデータの管理と変更通知を担当する
+    /// </summary>
     public class ViewModel
     {
-        private Action<Dictionary<string,object>> bind;
-        private Dictionary<string,object> data;
+        private Action<Dictionary<string, object>> bind;
+        private Dictionary<string, object> data;
         private List<string> updatedKeys = new List<string>();
-        private Dictionary<string,List<string>> updatedListKeys = new ();
+        private Dictionary<string, List<string>> updatedListKeys = new();
 
-        public ViewModel(Action<Dictionary<string,object>> bind)
+        /// <summary>
+        /// ViewModelを初期化する
+        /// </summary>
+        /// <param name="bind">データ更新時に呼び出されるバインディングコールバック</param>
+        public ViewModel(Action<Dictionary<string, object>> bind)
         {
             this.bind = bind;
         }
 
+        /// <summary>
+        /// JSON文字列からデータを初期化する
+        /// </summary>
+        /// <param name="json">初期化用のJSON文字列</param>
         public void Init(string json)
         {
             data = JsonConvert.DeserializeObject<Dictionary<string, object>>(json);
@@ -58,6 +70,11 @@ namespace UuIiView
 
             BaseInit(data);
         }
+
+        /// <summary>
+        /// Dictionaryからデータを初期化する
+        /// </summary>
+        /// <param name="dic">初期化用のDictionary</param>
         public void Init(Dictionary<string, object> dic) => BaseInit(dic);
 
         void BaseInit(Dictionary<string, object> dic)
@@ -130,6 +147,11 @@ namespace UuIiView
             return false;
         }
 
+        /// <summary>
+        /// 指定されたキーの値を取得する
+        /// </summary>
+        /// <param name="key">取得する値のキー</param>
+        /// <returns>キーに対応する値、存在しない場合はnull</returns>
         public object Get(string key)
         {
             if ( data.TryGetValue(key, out var value) )
@@ -139,17 +161,21 @@ namespace UuIiView
             return null;
         }
 
+        /// <summary>
+        /// 現在のデータをJSON文字列として取得する
+        /// </summary>
+        /// <returns>JSON形式の文字列</returns>
         public string GetJson()
         {
             return JsonConvert.SerializeObject(data);
         }
 
         /// <summary>
-        /// 値を更新する
+        /// 値を更新し、オプションでViewに通知する
         /// </summary>
-        /// <param name="key"></param>
-        /// <param name="obj"></param>
-        /// <param name="forceNotify"></param>
+        /// <param name="key">更新する値のキー</param>
+        /// <param name="obj">新しい値</param>
+        /// <param name="forceNotify">trueの場合、即座にViewに更新を通知する</param>
         public void UpdateData(string key, object obj, bool forceNotify = false)
         {
             if ( Sync(key, obj) == false ) return;
@@ -160,12 +186,13 @@ namespace UuIiView
         }
 
         /// <summary>
-        /// リストの値を更新する
+        /// リスト内の特定アイテムの値を更新する
         /// </summary>
-        /// <param name="rootKey"></param>
-        /// <param name="id"></param>
-        /// <param name="key"></param>
-        /// <param name="value"></param>
+        /// <param name="rootKey">リストのキー</param>
+        /// <param name="id">更新対象アイテムのID</param>
+        /// <param name="key">更新するプロパティのキー</param>
+        /// <param name="value">新しい値</param>
+        /// <param name="forceNotify">trueの場合、即座にViewに更新を通知する</param>
         public void UpdateListData(string rootKey, string id, string key, string value, bool forceNotify = false)
         {
             // Debug.LogWarning($"[UpdateListData] {rootKey}, {id}, {key}, {value}, {forceNotify}");
@@ -183,6 +210,10 @@ namespace UuIiView
             if ( forceNotify ) ForceNotify();
         }
 
+        /// <summary>
+        /// 蓄積された更新をViewに強制通知する
+        /// UpdateDataやUpdateListDataで蓄積された変更を一括でViewに反映する
+        /// </summary>
         public void ForceNotify()
         {
             // 更新された値を抽出
@@ -207,6 +238,9 @@ namespace UuIiView
             updatedListKeys.Clear();
         }
 
+        /// <summary>
+        /// すべてのデータと更新履歴をクリアする
+        /// </summary>
         public void Clear()
         {
             data?.Clear();
@@ -214,6 +248,10 @@ namespace UuIiView
             updatedListKeys.Clear();
         }
 
+        /// <summary>
+        /// デバッグ用にデータの内容と更新キーを文字列として出力する
+        /// </summary>
+        /// <returns>整形されたデータ内容の文字列</returns>
         public string Log()
         {
             StringBuilder sb = new ();

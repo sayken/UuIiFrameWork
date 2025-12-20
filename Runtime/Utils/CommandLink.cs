@@ -3,16 +3,34 @@ using System;
 
 namespace UuIiView
 {
+    /// <summary>
+    /// UIイベント情報を構造化するクラス
+    /// フォーマット: PanelName/EventType/ActionType/EventName/ParentName/Id[/param=value...]
+    /// </summary>
     public class CommandLink
     {
+        /// <summary>対象要素のID</summary>
         public string Id;
+
+        /// <summary>イベント名</summary>
         public string EventName;
+
+        /// <summary>イベントの種類（Button, Toggle, Slider等）</summary>
         public UuIiView.EventType EventType;
+
+        /// <summary>アクションの種類（Open, Close, DataSync等）</summary>
         public UuIiView.ActionType ActionType;
+
+        /// <summary>対象パネル名</summary>
         public string PanelName;
+
+        /// <summary>親要素名（リストアイテムの場合に使用）</summary>
         public string ParentName;
+
+        /// <summary>追加パラメータ</summary>
         public Dictionary<string, string> param;
-        string source = string.Empty;
+
+        private string source = string.Empty;
 
         /// <summary>
         /// 以下の順番で/（スラッシュ）区切り
@@ -68,13 +86,28 @@ namespace UuIiView
             }
         }
 
+        /// <summary>
+        /// 元のコマンドリンク文字列を返す
+        /// </summary>
+        /// <returns>コマンドリンク文字列</returns>
         public override string ToString() => source;
 
+        /// <summary>
+        /// パネルを開くためのCommandLinkを作成する
+        /// </summary>
+        /// <param name="panel">対象パネルのEnum値</param>
+        /// <param name="id">対象要素のID（省略可）</param>
+        /// <returns>Open用のCommandLink</returns>
         public static CommandLink CreateOpen(Enum panel, string id = "")
         {
             return new CommandLink($"{panel}/{UuIiView.EventType.Button}/{UuIiView.ActionType.Open}/EventName/ParentName/{id}");
         }
 
+        /// <summary>
+        /// デバッグ用のログ文字列を生成する
+        /// </summary>
+        /// <param name="isScene">シーンイベントの場合はtrue</param>
+        /// <returns>色付きのログ文字列</returns>
         public string Log(bool isScene = false)
         {
             var paramStr = "";

@@ -2,19 +2,33 @@ using System;
 
 namespace UuIiView
 {
+    /// <summary>
+    /// UIパネルのPresenter基底クラス
+    /// パネルのライフサイクル管理とイベントルーティングを担当する
+    /// </summary>
     public abstract class UIPresenter : IPresenter
     {
         Router router;
+
+        /// <summary>関連付けられたパネル名</summary>
         protected string PanelName;
+        /// <summary>管理対象のUIPanelインスタンス</summary>
         protected UIPanel uiPanel;
 
+        /// <summary>モデルコンテナ</summary>
         protected Model model;
 
-        // protected Action onPanelOpen;
-        // protected Action onPanelClose;
+        /// <summary>パネルオープン時のコールバック</summary>
         protected Action onOpen;
+        /// <summary>パネルクローズ時のコールバック</summary>
         protected Action onClose;
 
+        /// <summary>
+        /// UIPresenterを初期化する
+        /// </summary>
+        /// <param name="router">イベントルーター</param>
+        /// <param name="panelName">管理するパネル名</param>
+        /// <param name="model">モデルコンテナ</param>
         public UIPresenter(Router router, string panelName, Model model)
         {
             this.router = router;
@@ -22,9 +36,12 @@ namespace UuIiView
             this.model = model;
         }
 
-        /// ========================================================================
-        /// Open, Close
-        /// ========================================================================
+        /// <summary>
+        /// パネルを開く
+        /// </summary>
+        /// <param name="onPanelOpen">パネルオープン完了時のコールバック</param>
+        /// <param name="onPanelClose">パネルクローズ完了時のコールバック</param>
+        /// <returns>開いたUIPanelインスタンス</returns>
         protected virtual UIPanel Open(Action onPanelOpen = null, Action onPanelClose = null)
         {
             if ( uiPanel == null )
@@ -38,6 +55,9 @@ namespace UuIiView
             return uiPanel.Open(PassToRouter);
         }
 
+        /// <summary>
+        /// パネルを閉じる
+        /// </summary>
         protected virtual void Close()
         {
             onClose?.Invoke();
@@ -47,26 +67,45 @@ namespace UuIiView
             }
         }
 
-
-        /// ========================================================================
-        /// Pass CommandLink to Router
-        /// ========================================================================
-
+        /// <summary>
+        /// コマンドリンク文字列をルーターに渡す
+        /// </summary>
+        /// <param name="path">コマンドリンク文字列</param>
         void PassToRouter(string path) => PassToRouter(new CommandLink(path));
 
+        /// <summary>
+        /// コマンドをルーターに渡す
+        /// </summary>
+        /// <param name="cmd">ルーティングするコマンド</param>
         protected void PassToRouter(CommandLink cmd) => router.Routing(cmd);
 
+        /// <summary>
+        /// 指定した名前のPresenterを取得する
+        /// </summary>
+        /// <param name="name">Presenter名</param>
+        /// <returns>対応するIPresenter</returns>
         protected IPresenter GetPresenter(string name) => router.GetPresenter(name);
 
+        /// <summary>
+        /// シーン遷移用のコマンドをルーターに渡す
+        /// </summary>
+        /// <param name="cmd">シーン遷移コマンド</param>
         protected void PassToScene(CommandLink cmd) => router.RouteToScene(cmd);
 
-        /// ========================================================================
-        /// Event
-        /// ========================================================================
+        /// <summary>
+        /// コマンドリンク文字列からイベントを処理する
+        /// </summary>
+        /// <param name="commandLink">コマンドリンク文字列</param>
         public virtual void OnEvent(string commandLink)
         {
             OnEvent(new CommandLink(commandLink));
         }
+
+        /// <summary>
+        /// コマンドリンクからイベントを処理する
+        /// Open/Close等のアクションタイプに応じた処理を実行する
+        /// </summary>
+        /// <param name="commandLink">処理するコマンドリンク</param>
         public virtual void OnEvent(CommandLink commandLink)
         {
             switch( commandLink.ActionType )
@@ -85,6 +124,12 @@ namespace UuIiView
             }
         }
 
+        /// <summary>
+        /// パネル初期化用のデータを取得する
+        /// サブクラスでオーバーライドしてAPI呼び出し等を実装する
+        /// </summary>
+        /// <param name="commandLink">初期化のトリガーとなったコマンド</param>
+        /// <param name="onCompleted">データ取得完了時のコールバック（JSON文字列を渡す）</param>
         protected virtual void GetInitData(CommandLink commandLink, Action<string> onCompleted)
         {
             onCompleted.Invoke("{}");

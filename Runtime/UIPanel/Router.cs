@@ -4,13 +4,18 @@ using System;
 
 namespace UuIiView
 {
+    /// <summary>
+    /// イベントルーティングを管理するコンポーネント
+    /// UIViewから発生したイベントを適切なPresenterに振り分ける
+    /// </summary>
     [RequireComponent(typeof(UILayer))]
     public class Router : MonoBehaviour
     {
-        // 全Presenterのインスタンスを保持
-        public Dictionary<string, IPresenter> presenters { get; private set; }= new ();
-        // 全GroupPresenterのインスタンスを保持
-        public Dictionary<string, IGroupPresenter> groupPresenters { get; private set;} = new ();
+        /// <summary>登録されている全Presenterのインスタンス</summary>
+        public Dictionary<string, IPresenter> presenters { get; private set; } = new();
+
+        /// <summary>登録されている全GroupPresenterのインスタンス</summary>
+        public Dictionary<string, IGroupPresenter> groupPresenters { get; private set; } = new();
 
         /// <summary>
         /// Presenterをセットする
@@ -53,6 +58,12 @@ namespace UuIiView
             return presenters.ContainsKey(panelName) ? presenters[panelName] : null;
         }
 
+        /// <summary>
+        /// GroupPresenterをセットする
+        /// </summary>
+        /// <param name="type">GroupPresenterの型</param>
+        /// <param name="group">UIGroupの設定</param>
+        /// <param name="model">共有するModelインスタンス</param>
         public void SetGroupPresenter(Type type, UIGroup group, Model model)
         {
             if (group == null)
@@ -117,8 +128,13 @@ namespace UuIiView
             }
         }
 
+        /// <summary>現在アクティブなシーン</summary>
         public IScene CurrentScene;
 
+        /// <summary>
+        /// シーンにイベントをルーティングする
+        /// </summary>
+        /// <param name="cmd">ルーティングするコマンド</param>
         public void RouteToScene(CommandLink cmd)
         {
             Debug.Log(cmd.Log(true));
@@ -126,7 +142,9 @@ namespace UuIiView
             CurrentScene?.OnEvent(cmd);
         }
 
-
+        /// <summary>
+        /// デバッグ用：登録されているGroupPresenterの情報をログ出力する
+        /// </summary>
         public void Log()
         {
             foreach ( var a in groupPresenters)
