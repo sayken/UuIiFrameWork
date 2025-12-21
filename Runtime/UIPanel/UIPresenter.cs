@@ -1,4 +1,5 @@
 using System;
+using UnityEngine;
 
 namespace UuIiView
 {
@@ -6,12 +7,18 @@ namespace UuIiView
     /// UIパネルのPresenter基底クラス
     /// パネルのライフサイクル管理とイベントルーティングを担当する
     /// </summary>
+    /// <remarks>
+    /// MVPパターンにおけるPresenterとして、ViewとModelの仲介役を担う
+    /// パネルのOpen/Close、イベント処理、データ取得を統括する
+    /// </remarks>
     public abstract class UIPresenter : IPresenter
     {
-        Router router;
+        /// <summary>イベントルーター</summary>
+        private readonly Router router;
 
         /// <summary>関連付けられたパネル名</summary>
         protected string PanelName;
+
         /// <summary>管理対象のUIPanelインスタンス</summary>
         protected UIPanel uiPanel;
 
@@ -20,6 +27,7 @@ namespace UuIiView
 
         /// <summary>パネルオープン時のコールバック</summary>
         protected Action onOpen;
+
         /// <summary>パネルクローズ時のコールバック</summary>
         protected Action onClose;
 
@@ -41,13 +49,25 @@ namespace UuIiView
         /// </summary>
         /// <param name="onPanelOpen">パネルオープン完了時のコールバック</param>
         /// <param name="onPanelClose">パネルクローズ完了時のコールバック</param>
-        /// <returns>開いたUIPanelインスタンス</returns>
+        /// <returns>開いたUIPanelインスタンス（失敗時はnull）</returns>
         protected virtual UIPanel Open(Action onPanelOpen = null, Action onPanelClose = null)
         {
-            if ( uiPanel == null )
+            if (UILayer.Inst == null)
+            {
+                Debug.LogError($"[UIPresenter] UILayer.Inst is not initialized: {PanelName}");
+                return null;
+            }
+
+            if (uiPanel == null)
             {
                 uiPanel = UILayer.Inst.AddPanel(PanelName);
+                if (uiPanel == null)
+                {
+                    Debug.LogError($"[UIPresenter] Failed to add panel: {PanelName}");
+                    return null;
+                }
             }
+
             uiPanel.OnOpen = onPanelOpen;
             uiPanel.OnClose = onPanelClose;
 
@@ -61,36 +81,65 @@ namespace UuIiView
         protected virtual void Close()
         {
             onClose?.Invoke();
-            if ( uiPanel != null)
-            {
-                uiPanel.Close();
-            }
+            uiPanel?.Close();
         }
 
         /// <summary>
         /// コマンドリンク文字列をルーターに渡す
         /// </summary>
         /// <param name="path">コマンドリンク文字列</param>
-        void PassToRouter(string path) => PassToRouter(new CommandLink(path));
+        private void PassToRouter(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+            {
+                return;
+            }
+
+            try
+            {
+                PassToRouter(new CommandLink(path));
+            }
+            catch (ArgumentException ex)
+            {
+                Debug.LogError($"[UIPresenter] Invalid command link format: {ex.Message}");
+            }
+        }
 
         /// <summary>
         /// コマンドをルーターに渡す
         /// </summary>
         /// <param name="cmd">ルーティングするコマンド</param>
-        protected void PassToRouter(CommandLink cmd) => router.Routing(cmd);
+        protected void PassToRouter(CommandLink cmd)
+        {
+            if (router == null || cmd == null)
+            {
+                return;
+            }
+            router.Routing(cmd);
+        }
 
         /// <summary>
         /// 指定した名前のPresenterを取得する
         /// </summary>
         /// <param name="name">Presenter名</param>
-        /// <returns>対応するIPresenter</returns>
-        protected IPresenter GetPresenter(string name) => router.GetPresenter(name);
+        /// <returns>対応するIPresenter（見つからない場合はnull）</returns>
+        protected IPresenter GetPresenter(string name)
+        {
+            return router?.GetPresenter(name);
+        }
 
         /// <summary>
         /// シーン遷移用のコマンドをルーターに渡す
         /// </summary>
         /// <param name="cmd">シーン遷移コマンド</param>
-        protected void PassToScene(CommandLink cmd) => router.RouteToScene(cmd);
+        protected void PassToScene(CommandLink cmd)
+        {
+            if (router == null || cmd == null)
+            {
+                return;
+            }
+            router.RouteToScene(cmd);
+        }
 
         /// <summary>
         /// コマンドリンク文字列からイベントを処理する
@@ -98,7 +147,19 @@ namespace UuIiView
         /// <param name="commandLink">コマンドリンク文字列</param>
         public virtual void OnEvent(string commandLink)
         {
-            OnEvent(new CommandLink(commandLink));
+            if (string.IsNullOrEmpty(commandLink))
+            {
+                return;
+            }
+
+            try
+            {
+                OnEvent(new CommandLink(commandLink));
+            }
+            catch (ArgumentException ex)
+            {
+                Debug.LogError($"[UIPresenter] Invalid command link format: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -108,15 +169,24 @@ namespace UuIiView
         /// <param name="commandLink">処理するコマンドリンク</param>
         public virtual void OnEvent(CommandLink commandLink)
         {
-            switch( commandLink.ActionType )
+            if (commandLink == null)
             {
-                case UuIiView.ActionType.Open:
-                    Open();
-                    GetInitData(commandLink, (json)=>{
-                        uiPanel.UpdateData(json);
-                    });
+                return;
+            }
+
+            switch (commandLink.ActionType)
+            {
+                case ActionType.Open:
+                    var panel = Open();
+                    if (panel != null)
+                    {
+                        GetInitData(commandLink, (json) =>
+                        {
+                            uiPanel?.UpdateData(json);
+                        });
+                    }
                     break;
-                case UuIiView.ActionType.Close:
+                case ActionType.Close:
                     Close();
                     break;
                 default:
@@ -132,7 +202,7 @@ namespace UuIiView
         /// <param name="onCompleted">データ取得完了時のコールバック（JSON文字列を渡す）</param>
         protected virtual void GetInitData(CommandLink commandLink, Action<string> onCompleted)
         {
-            onCompleted.Invoke("{}");
+            onCompleted?.Invoke("{}");
         }
     }
 }

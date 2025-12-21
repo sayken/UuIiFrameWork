@@ -42,6 +42,18 @@ namespace UuIiView
         /// <param name="uiPanelData">パネル設定データ</param>
         public void Initialize(UIPanelData uiPanelData)
         {
+            if (uiPanelData == null)
+            {
+                Debug.LogError("[UILayer] uiPanelData cannot be null");
+                return;
+            }
+
+            if (uiPanelData.canvasRoot == null)
+            {
+                Debug.LogError("[UILayer] uiPanelData.canvasRoot cannot be null");
+                return;
+            }
+
             this.uiPanelData = uiPanelData;
 
             layerType.Clear();
@@ -109,32 +121,81 @@ namespace UuIiView
         /// パネルを追加する（キャッシュがあればそれを使用）
         /// </summary>
         /// <param name="panelName">パネル名</param>
-        /// <returns>追加されたUIPanel</returns>
+        /// <returns>追加されたUIPanel（失敗時はnull）</returns>
         public UIPanel AddPanel(string panelName)
         {
-            if ( panelCaches.ContainsKey(panelName) )
+            if (string.IsNullOrEmpty(panelName))
+            {
+                Debug.LogError("[UILayer] panelName cannot be null or empty");
+                return null;
+            }
+
+            if (panelCaches.ContainsKey(panelName))
             {
                 panelCaches[panelName].gameObject.SetActive(true);
                 return panelCaches[panelName];
             }
 
-            return Add(panelName).GetComponent<UIPanel>();
+            var go = Add(panelName);
+            return go != null ? go.GetComponent<UIPanel>() : null;
         }
 
-        GameObject Add(string panelName)
+        /// <summary>
+        /// パネルを生成する（内部処理）
+        /// </summary>
+        /// <param name="panelName">パネル名</param>
+        /// <returns>生成されたGameObject（失敗時はnull）</returns>
+        private GameObject Add(string panelName)
         {
+            if (uiPanelData == null || uiPanelData.panels == null)
+            {
+                Debug.LogError("[UILayer] uiPanelData is not initialized");
+                return null;
+            }
+
             var data = uiPanelData.panels.FirstOrDefault(_ => _.name == panelName);
 
             if (data == null)
             {
-                throw new KeyNotFoundException("not found : panelName = " + panelName);
+                Debug.LogError($"[UILayer] Panel not found: {panelName}");
+                return null;
             }
-            var go = Instantiate(data.prefab, layerContent[layerType[data.layerTypeIdx]]);
+
+            if (data.prefab == null)
+            {
+                Debug.LogError($"[UILayer] Panel prefab is null: {panelName}");
+                return null;
+            }
+
+            if (data.layerTypeIdx < 0 || data.layerTypeIdx >= layerType.Count)
+            {
+                Debug.LogError($"[UILayer] Invalid layerTypeIdx for panel: {panelName}");
+                return null;
+            }
+
+            var layerName = layerType[data.layerTypeIdx];
+            if (!layerContent.TryGetValue(layerName, out var parentTransform))
+            {
+                Debug.LogError($"[UILayer] Layer content not found: {layerName}");
+                return null;
+            }
+
+            var go = Instantiate(data.prefab, parentTransform);
+            if (go == null)
+            {
+                Debug.LogError($"[UILayer] Failed to instantiate panel: {panelName}");
+                return null;
+            }
+
             go.name = panelName;
 
-            if( data.cache )
+            if (data.cache)
             {
-                panelCaches[panelName] = go.GetComponent<UIPanel>();
+                var uiPanel = go.GetComponent<UIPanel>();
+                if (uiPanel != null)
+                {
+                    panelCaches[panelName] = uiPanel;
+                }
             }
             return go;
         }

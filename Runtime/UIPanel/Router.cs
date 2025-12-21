@@ -20,14 +20,20 @@ namespace UuIiView
         /// <summary>
         /// Presenterをセットする
         /// </summary>
-        /// <param name="panelName"></param>
-        /// <param name="type"></param>
-        /// <param name="model"></param>
+        /// <param name="panelName">パネル名</param>
+        /// <param name="type">Presenterの型</param>
+        /// <param name="model">共有するModelインスタンス</param>
         public void SetPresenter(string panelName, Type type, Model model)
         {
             if (string.IsNullOrEmpty(panelName))
             {
                 Debug.LogError("[Router] panelName cannot be null or empty");
+                return;
+            }
+
+            if (type == null)
+            {
+                Debug.LogError("[Router] type cannot be null");
                 return;
             }
 
@@ -37,9 +43,20 @@ namespace UuIiView
                 return;
             }
 
+            if (UILayer.Inst == null)
+            {
+                Debug.LogError("[Router] UILayer.Inst is not initialized");
+                return;
+            }
+
             try
             {
                 IPresenter obj = (IPresenter)Activator.CreateInstance(type, UILayer.Inst.Router, panelName, model);
+                if (obj == null)
+                {
+                    Debug.LogError($"[Router] Failed to create presenter instance: {type.Name}");
+                    return;
+                }
                 presenters[panelName] = obj;
             }
             catch (Exception ex)
@@ -66,6 +83,12 @@ namespace UuIiView
         /// <param name="model">共有するModelインスタンス</param>
         public void SetGroupPresenter(Type type, UIGroup group, Model model)
         {
+            if (type == null)
+            {
+                Debug.LogError("[Router] type cannot be null");
+                return;
+            }
+
             if (group == null)
             {
                 Debug.LogError("[Router] group cannot be null");
@@ -78,9 +101,21 @@ namespace UuIiView
                 return;
             }
 
+            if (UILayer.Inst == null)
+            {
+                Debug.LogError("[Router] UILayer.Inst is not initialized");
+                return;
+            }
+
             try
             {
                 IGroupPresenter groupPresenter = (IGroupPresenter)Activator.CreateInstance(type, UILayer.Inst.Router, group.name, model);
+                if (groupPresenter == null)
+                {
+                    Debug.LogError($"[Router] Failed to create group presenter instance: {type.Name}");
+                    return;
+                }
+
                 foreach (var panelName in group.panelNames)
                 {
                     if (!presenters.TryGetValue(panelName, out var presenter))
